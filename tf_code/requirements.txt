@@ -1,0 +1,9 @@
+matplotlib
+numpy
+Pillow
+scikit-image
+tensorflow
+tqdm
+pandas
+scipy
+tensorflow_datasets
