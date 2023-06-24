@@ -1,23 +1,10 @@
 import numpy as np
-import tensorflow as tf
 from skimage.transform import resize
-
+import torch
 import helpers
 
 
 def generate_masks(batch_size, small_dim, prob, target_size):
-    '''
-    Returns batch_size number of masks.
-
-    Parameters:
-        batch_size: batch size to process the copies
-        small_dim: mask size parameter
-        prob: probability of masking a pixel
-        target_size: the required model input size
-
-    Returns:
-        masks: zero to one range masks
-    '''
     
     cell_size = np.ceil(np.array(target_size) / small_dim)
     up_size = (small_dim + 1) * cell_size
@@ -39,24 +26,12 @@ def generate_masks(batch_size, small_dim, prob, target_size):
             mode='reflect',
             anti_aliasing=False)[x:x + target_size[0], y:y + target_size[1]]
     
-    masks = masks.reshape(-1, *target_size, 1) # shape : (batch_size, 224, 224, 1)
+    masks = masks.reshape(-1, 1, *target_size)
 
     return masks
 
 
 def produce_noisy_masks(masks, batch_size, noise_perc, arr_3d):
-    '''
-    Returns masks with noise to later make copies of the original image.
-
-    Parameters:
-        masks: zero to one range masks
-        batch_size: batch size to process the copies
-        noise_perc: amount of noise to add
-        arr_3d: array of the original image
-
-    Returns:
-        noisy_masks_4d: masks with noise
-    '''
     
     # new shape with batch_size dimension
     new_shape = (batch_size,) + arr_3d.shape
@@ -81,69 +56,34 @@ def produce_noisy_masks(masks, batch_size, noise_perc, arr_3d):
 
 
 def get_weighted_grad(grads, softmax_preds_2d, batch_size):
-    '''
-    Returns the weighted sum of the gradients and the prediction scores.
 
-    Parameters:
-        grads: tensor of gradients
-        softmax_preds_2d: prediction scores
-        batch_size: batch size to process the copies
+    softmax_preds_4d = torch.reshape(softmax_preds_2d, (batch_size,1,1,1))
 
-    Returns:
-        weighted_grad: weighted sum of the gradients and the prediction scores
-    '''
+    mul_grad = grads * softmax_preds_4d
 
-    # reshape softmax scores
-    softmax_preds_4d = tf.reshape(softmax_preds_2d, (batch_size,1,1,1))
-    
-    # multiply softmax scores with corresponding gradient tensor
-    # shape : (num_examples, 224, 224, 3)
-    mul_grad = tf.math.multiply(grads, softmax_preds_4d)
-    
-    # sum gradients across examples
-    # shape : (224, 224, 3)
-    weighted_grad = tf.math.reduce_sum(mul_grad, axis=0)
+    weighted_grad = torch.sum(mul_grad, axis=0)
 
     return weighted_grad
 
 
-def get_rise_grad(num_examples, batch_size, small_dim, prob, noise_perc, image_tensor, target_size, model, grad_func):
-    '''
-    Returns the sensitivity map of the given image and also the prediction scores of the copies that get masked with noise.
-
-    Parameters:
-        num_examples: numbers of copies to make
-        batch_size: batch size to process the copies
-        small_dim: mask size parameter
-        prob: probability of masking a pixel
-        noise_perc: amount of noise to add
-        image_tensor: tensor of shape (batch_size=1, image_height, image_width, channels=3)
-        target_size: the required model input size
-        model: the model that makes the predictions
-        grad_func: method that calculates the gradients
-
-    Returns:
-        norm_array_2d: the final sensitivity map
-        predictions: list of prediction scores of the copies
-    '''
+def get_rise_grad(num_examples, batch_size, small_dim, prob, noise_perc, image_tensor, target, model, grad_func):
     
-    arr_3d = helpers.load_image_to_3d_array(image_tensor, target_size)
-    rise_grad = tf.zeros(arr_3d.shape, dtype=tf.dtypes.float32)
+    rise_grad = torch.zeros(image_tensor[0].shape, dtype=torch.float32).to(image_tensor.device)
     predictions = []
 
     for _ in range(np.math.ceil(num_examples/batch_size)):
         # prepare input
-        masks = generate_masks(batch_size, small_dim, prob, target_size)
-        noisy_masks_4d = produce_noisy_masks(masks, batch_size, noise_perc, arr_3d)
-        input_arr_4d = noisy_masks_4d + np.broadcast_to(arr_3d, noisy_masks_4d.shape)
+        masks = generate_masks(batch_size, small_dim, prob, target_size=image_tensor.shape[2:])
+        noisy_masks_4d = produce_noisy_masks(masks, batch_size, noise_perc, image_tensor[0].detach().cpu().numpy())
+        input_arr_4d = noisy_masks_4d + np.broadcast_to(image_tensor[0].detach().cpu().numpy(), noisy_masks_4d.shape)
         # prepare output
-        grads, softmax_preds_2d = grad_func(input_arr_4d, model)
-        predictions.extend(softmax_preds_2d.numpy())
-        weighted_grad = get_weighted_grad(grads, softmax_preds_2d, batch_size)
-        rise_grad = tf.math.add(rise_grad, weighted_grad)
+        grads, softmax_preds_2d = grad_func(torch.from_numpy(input_arr_4d).to(image_tensor.device), model, target)
+        predictions.extend(softmax_preds_2d.tolist())
+        weighted_grad = get_weighted_grad(grads, softmax_preds_2d.to(image_tensor.device), batch_size)
+        rise_grad = rise_grad + weighted_grad
     
     # get weighted average gradient as RISE paper says
-    rise_grad = tf.math.divide(rise_grad, num_examples * prob)
+    rise_grad = rise_grad / (num_examples * prob)
     norm_array_2d = helpers.grad_tensor_to_image_array(rise_grad)
 
     return norm_array_2d, predictions

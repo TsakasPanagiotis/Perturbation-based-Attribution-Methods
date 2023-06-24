@@ -87,14 +87,17 @@ def vanilla_gradients(input_array: torch.Tensor, model, target):
     
     input_array.requires_grad = True
     
-    predictions = model(input_array)
+    logits = model(input_array)
 
-    scores_for_class = predictions[:,target]
+    target_logits = logits[:,target]
 
-    scores_for_class.backward()
+    target_logits.backward(gradient=torch.tensor([1.]*target_logits.shape[0]).to(input_array.device))
+    
     grads = input_array.grad
 
-    return grads
+    softmax_preds_2d = torch.exp(target_logits) / torch.sum(torch.exp(logits), dim=1)
+
+    return grads, softmax_preds_2d
 
 
 # def get_info(name):
@@ -142,7 +145,6 @@ def visualize_sensitivity_map(norm_array_2d, in_notebook):
     else:
         img = im.fromarray(norm_array_2d)
         img.save('my.png')
-        img.show()
 
 
 # def visualize_image(image_tensor, target_size, in_notebook):
