@@ -13,10 +13,10 @@ model = model.to(device)
 model.eval()
 
 transform = torchvision.transforms.Compose([
-    torchvision.transforms.Resize((224,224)),
+    # torchvision.transforms.Resize((224,224)),
     torchvision.transforms.ToTensor()])
 
-dataset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 test_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
 
@@ -26,9 +26,10 @@ image_tensor, label = next(iter(test_loader)) # torch.Size([1, 1, 224, 224]) tor
 image_tensor = image_tensor.to(device)
 label = label.to(device)
 
-image_tensor = image_tensor.permute(0,2,3,1) # torch.Size([1, 224, 224, 1]) torch.float32
-image_tensor = torch.cat([image_tensor, image_tensor, image_tensor], dim=-1) # torch.Size([1, 224, 224, 3]) torch.float32
-image_tensor = image_tensor.permute(0,3,1,2) # torch.Size([1, 3, 224, 224]) torch.float32
+
+# image_tensor = image_tensor.permute(0,2,3,1) # torch.Size([1, 224, 224, 1]) torch.float32
+# image_tensor = torch.cat([image_tensor, image_tensor, image_tensor], dim=-1) # torch.Size([1, 224, 224, 3]) torch.float32
+# image_tensor = image_tensor.permute(0,3,1,2) # torch.Size([1, 3, 224, 224]) torch.float32
 
 
 metrics.perform('vanilla', deepcopy(image_tensor), model, label.item(), 'vanilla_results.csv')

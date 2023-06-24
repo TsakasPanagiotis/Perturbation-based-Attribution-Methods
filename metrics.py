@@ -1,5 +1,5 @@
 import helpers
-# import evaluation
+import evaluation
 import vanilla_grad
 import integ_grad
 import smooth_grad
@@ -67,11 +67,16 @@ def perform(grad_fn, image_tensor, model, target, csv_path) -> None:
     else:
         raise ValueError("only ('', 'smooth_', 'rise_') X ('vanilla', 'integrated') combinations supported")
 
-    # deletion_scores = evaluation.deletion_scores(
-    #     model, norm_array_2d, image_tensor, target,
-    #     num_stages=100, batch_size=10, show_stages=False)
+    deletion_scores = evaluation.deletion_scores(
+        model, norm_array_2d, image_tensor, target,
+        num_stages=100, batch_size=10, show_stages=True)
+    
+    print('deletion_scores', len(deletion_scores))
+    print(deletion_scores)
 
-    # delete_auc = evaluation.area_under_curve(deletion_scores)
+    delete_auc = evaluation.area_under_curve(deletion_scores)
+
+    print('delete_auc', delete_auc)
 
     # with open(csv_path, 'a') as file:
     #     file.write(
@@ -79,5 +84,3 @@ def perform(grad_fn, image_tensor, model, target, csv_path) -> None:
     #         str(np.median(norm_array_2d)) + ',' +   # imp
     #         str(delete_auc) + '\n'                  # dlt
     #     )
-
-    
