@@ -78,7 +78,8 @@ def visualize_scores(scores, is_insert: bool):
     plt.xlim([0,100])
     plt.ylabel('prediction probability')
     plt.ylim([0,1])
-    plt.show()
+    # plt.show()
+    plt.savefig('del_curve.png')
 
 
 def area_under_curve(scores):

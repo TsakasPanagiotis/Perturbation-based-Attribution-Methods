@@ -4,21 +4,18 @@ import vanilla_grad
 import integ_grad
 import smooth_grad
 import rise_grad
+import lime
 
 
 def perform(grad_fn, image_tensor, model, target, csv_path) -> None:
 
     if grad_fn == 'vanilla':
         norm_array_2d, predictions = vanilla_grad.get_vanilla_grad(
-            image_tensor, model, target)
-        print(predictions)
-        helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
+            image_tensor, model, target)        
     
     elif grad_fn == 'integrated':
         norm_array_2d, predictions = integ_grad.get_integ_grad(
             image_tensor, model, target)
-        print(predictions)
-        helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
 
     elif grad_fn == 'smooth_vanilla':
         num_examples=20
@@ -27,8 +24,6 @@ def perform(grad_fn, image_tensor, model, target, csv_path) -> None:
         norm_array_2d, predictions = smooth_grad.get_smooth_grad(
             num_examples, batch_size, noise_perc, 
             image_tensor, target, model, helpers.vanilla_gradients)
-        print(predictions)
-        helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
     
     elif grad_fn == 'smooth_integrated':
         num_examples=20
@@ -37,8 +32,6 @@ def perform(grad_fn, image_tensor, model, target, csv_path) -> None:
         norm_array_2d, predictions = smooth_grad.get_smooth_grad(
             num_examples, batch_size, noise_perc, 
             image_tensor, target, model, integ_grad.integrated_gradients)
-        print(predictions)
-        helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
     
     elif grad_fn == 'rise_vanilla':
         num_examples = 100
@@ -49,8 +42,6 @@ def perform(grad_fn, image_tensor, model, target, csv_path) -> None:
         norm_array_2d, predictions = rise_grad.get_rise_grad(
             num_examples, batch_size, small_dim, prob, noise_perc, 
             image_tensor, target, model, helpers.vanilla_gradients)
-        print(predictions)
-        helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
     
     elif grad_fn == 'rise_integrated':
         num_examples = 100
@@ -61,18 +52,20 @@ def perform(grad_fn, image_tensor, model, target, csv_path) -> None:
         norm_array_2d, predictions = rise_grad.get_rise_grad(
             num_examples, batch_size, small_dim, prob, noise_perc, 
             image_tensor, target, model, integ_grad.integrated_gradients)
-        print(predictions)
-        helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
+    
+    elif grad_fn == 'lime':
+        norm_array_2d = lime.get_lime(image_tensor, model)
 
     else:
-        raise ValueError("only ('', 'smooth_', 'rise_') X ('vanilla', 'integrated') combinations supported")
+        raise ValueError(f'grad_fn "{grad_fn}" not supported')
+    
+    helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
 
     deletion_scores = evaluation.deletion_scores(
         model, norm_array_2d, image_tensor, target,
         num_stages=100, batch_size=10, show_stages=True)
     
-    print('deletion_scores', len(deletion_scores))
-    print(deletion_scores)
+    evaluation.visualize_scores(deletion_scores, is_insert=False)
 
     delete_auc = evaluation.area_under_curve(deletion_scores)
 
