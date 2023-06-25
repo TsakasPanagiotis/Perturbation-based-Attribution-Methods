@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import sklearn
 import sklearn.metrics
 from sklearn.linear_model import LinearRegression
+from copy import deepcopy
 
 def perturb_image(img, perturbation, segments):
     '''
@@ -23,14 +24,17 @@ def perturb_image(img, perturbation, segments):
     return img * np.expand_dims(mask, axis=-1)
 
 
-def get_lime(image_tensor:torch.Tensor, model):
+def get_lime(image_tensor:torch.Tensor, model, target, images, indexes):
+
+    images.append(image_tensor[0].detach().cpu().numpy().flatten())
+    if target not in indexes['orig'].keys():
+        indexes['orig'][target] = []
+    indexes['orig'][target].append(len(images)-1)
 
     img = np.transpose(image_tensor[0].detach().cpu().numpy(), (1,2,0))
 
     superpixels = skimage.segmentation.quickshift(img, kernel_size=2, max_dist=100, ratio=0.2)
     num_superpixels = np.unique(superpixels).shape[0]
-
-    print('num_superpixels', num_superpixels, np.unique(superpixels, return_counts=True))
 
     num_perturb = 150
     perturbations = np.random.binomial(1, 0.5, size=(num_perturb, num_superpixels))
@@ -39,6 +43,13 @@ def get_lime(image_tensor:torch.Tensor, model):
     for pert in perturbations:
         perturbed_img = perturb_image(img, pert,superpixels).transpose((2,0,1))[np.newaxis]
         input = torch.tensor(perturbed_img, dtype=torch.float32, device=image_tensor.device)
+        
+        for image in deepcopy(input):
+            images.append(image.detach().cpu().numpy().flatten())
+            if target not in indexes['pert'].keys():
+                indexes['pert'][target] = []
+            indexes['pert'][target].append(len(images)-1)
+        
         output = model(input)
         output = F.softmax(output, dim=1)
         predictions.append(output.detach().cpu().numpy())
@@ -62,4 +73,4 @@ def get_lime(image_tensor:torch.Tensor, model):
 
     norm_array_2d = perturb_image(np.ones_like(img) * 255, mask, superpixels).astype(np.uint8)[:,:,0]
 
-    return norm_array_2d
+    return norm_array_2d, images, indexes

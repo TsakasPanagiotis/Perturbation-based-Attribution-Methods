@@ -2,6 +2,7 @@ import numpy as np
 from skimage.transform import resize
 import torch
 import helpers
+from copy import deepcopy
 
 
 def generate_masks(batch_size, small_dim, prob, target_size):
@@ -66,7 +67,12 @@ def get_weighted_grad(grads, softmax_preds_2d, batch_size):
     return weighted_grad
 
 
-def get_rise_grad(num_examples, batch_size, small_dim, prob, noise_perc, image_tensor, target, model, grad_func):
+def get_rise_grad(num_examples, batch_size, small_dim, prob, noise_perc, image_tensor, target, model, grad_func, images, indexes):
+    
+    images.append(image_tensor[0].detach().cpu().numpy().flatten())
+    if target not in indexes['orig'].keys():
+        indexes['orig'][target] = []
+    indexes['orig'][target].append(len(images)-1)
     
     rise_grad = torch.zeros(image_tensor[0].shape, dtype=torch.float32).to(image_tensor.device)
     predictions = []
@@ -76,8 +82,16 @@ def get_rise_grad(num_examples, batch_size, small_dim, prob, noise_perc, image_t
         masks = generate_masks(batch_size, small_dim, prob, target_size=image_tensor.shape[2:])
         noisy_masks_4d = produce_noisy_masks(masks, batch_size, noise_perc, image_tensor[0].detach().cpu().numpy())
         input_arr_4d = noisy_masks_4d + np.broadcast_to(image_tensor[0].detach().cpu().numpy(), noisy_masks_4d.shape)
+        input_arr_4d = torch.from_numpy(input_arr_4d).to(image_tensor.device)
+
+        for image in deepcopy(input_arr_4d):
+            images.append(image.detach().cpu().numpy().flatten())
+            if target not in indexes['pert'].keys():
+                indexes['pert'][target] = []
+            indexes['pert'][target].append(len(images)-1)
+        
         # prepare output
-        grads, softmax_preds_2d = grad_func(torch.from_numpy(input_arr_4d).to(image_tensor.device), model, target)
+        grads, softmax_preds_2d = grad_func(input_arr_4d, model, target)
         predictions.extend(softmax_preds_2d.tolist())
         weighted_grad = get_weighted_grad(grads, softmax_preds_2d.to(image_tensor.device), batch_size)
         rise_grad = rise_grad + weighted_grad
@@ -86,4 +100,4 @@ def get_rise_grad(num_examples, batch_size, small_dim, prob, noise_perc, image_t
     rise_grad = rise_grad / (num_examples * prob)
     norm_array_2d = helpers.grad_tensor_to_image_array(rise_grad)
 
-    return norm_array_2d, predictions
+    return norm_array_2d, predictions, images, indexes

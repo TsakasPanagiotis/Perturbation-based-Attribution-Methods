@@ -33,13 +33,11 @@ def visualize_stages(stages):
         fig.add_subplot(rows, columns, i+1)
         plt.imshow(stages[i])
         plt.axis('off')
-    plt.savefig(f'stages_{time.time()}.png')
+    plt.savefig(f'stages_{time.time()}.png', facecolor='w', bbox_inches='tight')
     plt.close()
 
 
 def deletion_scores(model, norm_array_2d, image_tensor, target, num_stages, batch_size, show_stages):
-
-    print('image_tensor', image_tensor.shape, image_tensor.dtype)
 
     scores = []
     # get score of original image
@@ -79,7 +77,8 @@ def visualize_scores(scores, is_insert: bool):
     plt.ylabel('prediction probability')
     plt.ylim([0,1])
     # plt.show()
-    plt.savefig('del_curve.png')
+    plt.savefig('del_curve.png', facecolor='w', bbox_inches='tight')
+    plt.close()
 
 
 def area_under_curve(scores):

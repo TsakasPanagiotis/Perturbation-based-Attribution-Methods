@@ -1,9 +1,10 @@
 import torch
 import torchvision
 from torch.utils.data import DataLoader
-# import helpers
 import metrics
 from copy import deepcopy
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -20,11 +21,11 @@ dataset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True
 test_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
 
-image_tensor: torch.Tensor
+# image_tensor: torch.Tensor
 
-image_tensor, label = next(iter(test_loader)) # torch.Size([1, 1, 224, 224]) torch.float32
-image_tensor = image_tensor.to(device)
-label = label.to(device)
+# image_tensor, label = next(iter(test_loader)) # torch.Size([1, 1, 224, 224]) torch.float32
+# image_tensor = image_tensor.to(device)
+# label = label.to(device)
 
 # # lines for mnist
 # image_tensor = image_tensor.permute(0,2,3,1) # torch.Size([1, 224, 224, 1]) torch.float32
@@ -32,11 +33,53 @@ label = label.to(device)
 # image_tensor = image_tensor.permute(0,3,1,2) # torch.Size([1, 3, 224, 224]) torch.float32
 
 
-# metrics.perform('vanilla', deepcopy(image_tensor), model, label.item(), 'vanilla_results.csv')
-# metrics.perform('integrated', deepcopy(image_tensor), model, label.item(), 'integrated_results.csv')
-# metrics.perform('smooth_vanilla', deepcopy(image_tensor), model, label.item(), 'smooth_vanilla_results.csv')
-# metrics.perform('smooth_integrated', deepcopy(image_tensor), model, label.item(), 'smooth_integrated_results.csv')
-# metrics.perform('rise_vanilla', deepcopy(image_tensor), model, label.item(), 'rise_vanilla_results.csv')
-# metrics.perform('rise_integrated', deepcopy(image_tensor), model, label.item(), 'rise_integrated_results.csv')
+# metrics.perform('vanilla', deepcopy(image_tensor), model, label.item())
+# metrics.perform('integrated', deepcopy(image_tensor), model, label.item())
+# metrics.perform('smooth_vanilla', deepcopy(image_tensor), model, label.item())
+# metrics.perform('smooth_integrated', deepcopy(image_tensor), model, label.item())
+# metrics.perform('rise_vanilla', deepcopy(image_tensor), model, label.item())
+# metrics.perform('rise_integrated', deepcopy(image_tensor), model, label.item())
+# metrics.perform('lime', deepcopy(image_tensor), model, label.item())
 
-metrics.perform('lime', deepcopy(image_tensor), model, label.item(), 'lime_results.csv')
+avg_auc = 0
+images = []
+indexes = {
+    'orig': {},
+    'pert': {}
+}
+
+counter = 0
+for image_tensor, label in test_loader:
+    image_tensor = image_tensor.to(device)
+    label = label.to(device)
+
+    images, indexes, avg_auc = metrics.perform('lime', deepcopy(image_tensor), model, label.item(), images, indexes, avg_auc)
+
+    counter += 1
+    if counter == 50:
+        break
+
+
+avg_auc /= len(test_loader)
+print('avg_auc', avg_auc)
+
+
+pca = PCA(n_components=2)
+pca_images = pca.fit_transform(images)
+
+
+colors = ['blue', 'orange', 'green', 'purple', 'red', 'brown', 'pink', 'gray', 'olive', 'cyan']
+markers = ['o', 'v', '^', '<', '>', 's', 'P', '*', 'X', 'D']
+
+for label in indexes['orig'].keys():
+    plt.scatter(pca_images[indexes['orig'][label]][:,0], pca_images[indexes['orig'][label]][:,1],
+        c=colors[label], marker=markers[label], s=70,  label=f'orig {label}')    
+    plt.scatter(pca_images[indexes['pert'][label]][:,0], pca_images[indexes['pert'][label]][:,1],
+        c=colors[label], marker=markers[label], alpha=0.1, s=20, label=f'pert {label}')
+
+ax = plt.gca()
+ax.xaxis.set_visible(False)
+ax.yaxis.set_visible(False)
+plt.legend()
+plt.savefig('distr.png', facecolor='w', bbox_inches='tight')
+plt.close()

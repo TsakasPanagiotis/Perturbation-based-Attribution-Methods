@@ -1,6 +1,7 @@
 import torch
 import helpers
 import numpy as np
+from copy import deepcopy
 
 
 def produce_noisy_images(batch_size, image_tensor, noise_perc):
@@ -20,7 +21,12 @@ def produce_noisy_images(batch_size, image_tensor, noise_perc):
     return noisy_arr_4d
 
 
-def get_smooth_grad(num_examples, batch_size, noise_perc, image_tensor, target, model, grad_func):
+def get_smooth_grad(num_examples, batch_size, noise_perc, image_tensor, target, model, grad_func, images, indexes):
+
+    images.append(image_tensor[0].detach().cpu().numpy().flatten())
+    if target not in indexes['orig'].keys():
+        indexes['orig'][target] = []
+    indexes['orig'][target].append(len(images)-1)
 
     smooth_grad = torch.zeros(image_tensor[0].shape, dtype=torch.float32).to(image_tensor.device)
     predictions = []
@@ -28,6 +34,13 @@ def get_smooth_grad(num_examples, batch_size, noise_perc, image_tensor, target, 
     for _ in range(np.math.ceil(num_examples/batch_size)):
 
         input_arr_4d = produce_noisy_images(batch_size, image_tensor, noise_perc)
+
+        for image in deepcopy(input_arr_4d):
+            images.append(image.detach().cpu().numpy().flatten())
+            if target not in indexes['pert'].keys():
+                indexes['pert'][target] = []
+            indexes['pert'][target].append(len(images)-1)
+
         grads, softmax_preds_2d = grad_func(input_arr_4d, model, target)
 
         predictions.extend(softmax_preds_2d.tolist())
@@ -36,4 +49,4 @@ def get_smooth_grad(num_examples, batch_size, noise_perc, image_tensor, target, 
     smooth_grad = smooth_grad / num_examples
     norm_array_2d = helpers.grad_tensor_to_image_array(smooth_grad)
 
-    return norm_array_2d, predictions
+    return norm_array_2d, predictions, images, indexes
