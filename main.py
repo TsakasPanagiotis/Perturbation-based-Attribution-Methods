@@ -1,28 +1,15 @@
-import argparse
-from train import train_model, evaluate_model, create_subset
-from model import VGG16, ResNet50
+from train import train_model, evaluate_model
+from utils import create_subset, preprocess_stl
+from model import ResNet50
 from data import PneumoniaTumorDataset_No,PneumoniaTumorDataset_Yes,MixedDataset
+import argparse
 import torchvision
 import torch
 from tqdm import tqdm
 import metrics 
 from copy import deepcopy
 from PIL import Image
-from torch.utils.data import Subset
-from sklearn.model_selection import train_test_split
 
-
-def remove_and_split_stl10_dataset(dataset, classes_to_remove):
-
-    labels = dataset.labels    
-    indices_to_keep = [i for i, label in enumerate(labels) if label not in classes_to_remove]
-    dataset_subset = Subset(dataset, indices_to_keep)
-    labels_subset = [label for i, label in enumerate(labels) if i in indices_to_keep]
-    train_indices, test_indices = train_test_split(range(len(labels_subset)), test_size=0.1, stratify=labels_subset)
-    train_subset = Subset(dataset_subset, train_indices)
-    test_subset = Subset(dataset_subset, test_indices)
-    
-    return train_subset, test_subset
 
 def main(args):
 
@@ -31,14 +18,11 @@ def main(args):
         no_train_dataset = PneumoniaTumorDataset_No('./chest_xray/train/NORMAL')
         yes_train_dataset = PneumoniaTumorDataset_Yes('./chest_xray/train/PNEUMONIA')
         trainset = MixedDataset(yes_train_dataset, no_train_dataset)
-
         no_test_dataset = PneumoniaTumorDataset_No('./chest_xray/test/NORMAL')
         yes_test_dataset = PneumoniaTumorDataset_Yes('./chest_xray/test/PNEUMONIA')
         testset = MixedDataset(yes_test_dataset, no_test_dataset)
-
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
         testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=True, num_workers=2)
-        #model = VGG16(2)
         model = ResNet50(2)
     
     elif args.experiment == 'tumor':
@@ -61,7 +45,6 @@ def main(args):
         testset = torchvision.datasets.ImageFolder('./brain-tumor-classification/Testing', transform=test_transform)
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
         testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=True, num_workers=2)
-        #model = VGG16(2)
         model = ResNet50(2)
 
     
@@ -74,14 +57,10 @@ def main(args):
             torchvision.transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
         ])
         original_set = torchvision.datasets.STL10(root='./data', split='train', download=True, transform=transform)
-
-        trainset, testset = remove_and_split_stl10_dataset(original_set, [4,5,6,7,8,9])
-
+        trainset, testset = preprocess_stl(original_set, [4,5,6,7,8,9])
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
         testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=True, num_workers=2)
-        #model = VGG16(4)
         model = ResNet50(4)
-
 
 
     if args.mode == 'train':
@@ -101,7 +80,6 @@ def main(args):
         print(f"Test accuracy on {len(testset)} samples : {test_acc}")
 
         image_tensor: torch.Tensor
-        #image_tensor, label = next(iter(test_loader))
         i = 1
         for image_tensor, label in tqdm(test_loader):
             print(i)
