@@ -19,3 +19,16 @@ class VGG16(nn.Module):
     def forward(self, x: torch.tensor) -> torch.tensor:
         out = self.model(x)
         return out
+    
+
+class ResNet50(nn.Module):
+    def __init__(self, num_classes) -> None:
+        super().__init__()
+
+        self.model = torchvision.models.resnet50(pretrained=True)
+        num_ftrs = self.model.fc.in_features
+        self.model.fc = nn.Linear(num_ftrs, num_classes)
+    
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        out = self.model(x)
+        return out
