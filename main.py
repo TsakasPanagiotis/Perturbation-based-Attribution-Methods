@@ -13,6 +13,11 @@ from PIL import Image
 
 def main(args):
 
+    torch.manual_seed(7)
+    torch.cuda.manual_seed(7)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
     if args.experiment == 'pneumonia':
 
         no_train_dataset = PneumoniaTumorDataset_No('./chest_xray/train/NORMAL')
@@ -74,24 +79,37 @@ def main(args):
         model.load_state_dict(torch.load('./resnet_' + str(args.experiment) + '_model.pt'))
         model = model.to(args.device)
         test_subset = create_subset(args,testset)
-        test_loader =  torch.utils.data.DataLoader(test_subset, batch_size=1, shuffle=False, num_workers=2)
+        test_loader =  torch.utils.data.DataLoader(test_subset, batch_size=1, shuffle=False, num_workers=1)
 
-        test_acc = evaluate_model(args, model, testloader)
-        print(f"Test accuracy on {len(testset)} samples : {test_acc}")
+        print("The length of the subset for explaining is : ",len(test_subset))
 
         image_tensor: torch.Tensor
         i = 1
+
         for image_tensor, label in tqdm(test_loader):
             print(i)
             image_tensor = image_tensor.to(args.device)
             label = label.to(args.device)
-            metrics.perform('vanilla', deepcopy(image_tensor), model, label.item(), 'vanilla_results.csv')
-            metrics.perform('integrated', deepcopy(image_tensor), model, label.item(), 'integrated_results.csv')
-            metrics.perform('smooth_vanilla', deepcopy(image_tensor), model, label.item(), 'smooth_vanilla_results.csv')
-            metrics.perform('smooth_integrated', deepcopy(image_tensor), model, label.item(), 'smooth_integrated_results.csv')
-            metrics.perform('rise_vanilla', deepcopy(image_tensor), model, label.item(), 'rise_vanilla_results.csv')
-            metrics.perform('rise_integrated', deepcopy(image_tensor), model, label.item(), 'rise_integrated_results.csv')
+
+            saliency_map_lime = metrics.perform('lime', deepcopy(image_tensor), model, label.item(), 'lime_results.csv')
+            saliency_map_smooth_integrated = metrics.perform('smooth_integrated', deepcopy(image_tensor), model, label.item(), 'smooth_integrated_results.csv')
+            saliency_map_rise_integrated = metrics.perform('rise_integrated', deepcopy(image_tensor), model, label.item(), 'rise_integrated_results.csv')
+
+            if i % 10 == 0:
+                print(f"Saving saliency map for step {i}")
+                img = Image.fromarray(saliency_map_lime)
+                img = img.resize((224,224),resample=Image.LANCZOS)
+                img.save('lime' + str(i) + '.png')
+
+                img2 = Image.fromarray(saliency_map_smooth_integrated)
+                img2 = img.resize((224,224),resample=Image.LANCZOS)
+                img2.save('smooth_grad' + str(i) + '.png')
+
+                img3 = Image.fromarray(saliency_map_rise_integrated)
+                img3 = img3.resize((224,224),resample=Image.LANCZOS)
+                img3.save('rise_grad' + str(i) + '.png')
             i += 1
+
 
 if __name__ == '__main__':
 

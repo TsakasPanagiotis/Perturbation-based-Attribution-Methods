@@ -17,13 +17,13 @@ def preprocess_stl(dataset, classes_to_remove):
 def create_subset(args, dataset):
     subset = []
     if args.experiment == 'pneumonia':
-        num_images_per_class = 25
-        class_counts = [0] * 4
+        num_images_per_class = 50
+        class_counts = [0] * 2
     elif args.experiment == 'tumor':
         num_images_per_class = 50
         class_counts = [0] * 2
     elif args.experiment == 'stl':
-        num_images_per_class = 10
+        num_images_per_class = 25
         class_counts = [0] * 10
 
     for image, label in dataset:
