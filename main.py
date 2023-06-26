@@ -113,7 +113,7 @@ def main(args):
                     str_label = 'cat'
             elif args.experiment == 'tumor':
                 if label.item() == 0:
-                    str_label = 'tumoer'
+                    str_label = 'tumor'
                 elif label.item() == 1:
                     str_label = 'normal'
             elif args.experiment == 'pneumonia':
