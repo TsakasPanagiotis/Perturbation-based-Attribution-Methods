@@ -63,7 +63,7 @@ def perform(grad_fn, image_tensor, model, target, images, indexes, avg_auc):
     else:
         raise ValueError(f'grad_fn "{grad_fn}" not supported')
     
-    helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
+    # helpers.visualize_sensitivity_map(norm_array_2d, in_notebook=False)
 
     
     deletion_scores = evaluation.deletion_scores(
