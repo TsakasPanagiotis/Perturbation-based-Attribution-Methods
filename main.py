@@ -3,12 +3,14 @@ from utils import create_subset, preprocess_stl
 from model import ResNet50
 from data import PneumoniaTumorDataset_No,PneumoniaTumorDataset_Yes,MixedDataset
 import argparse
+from sklearn.decomposition import PCA
 import torchvision
 import torch
 from tqdm import tqdm
 import metrics 
 from copy import deepcopy
 from PIL import Image
+import matplotlib.pyplot as plt
 
 
 def main(args):
@@ -76,39 +78,73 @@ def main(args):
     
     elif args.mode == 'explain':
 
+        methods = ['lime', 'smooth_integrated', 'rise_integrated']
+        print(f"Mode : {args.mode} using : {methods[0],methods[1],methods[2]}")
+        images_dict = {}
+        indexes_dict = {}
+        avg_auc_dict = {}
+
+        for method in methods:
+            images_dict[method] = []
+            indexes_dict[method] = { 'orig': {}, 'pert': {} }
+            avg_auc_dict[method] = 0
+
         model.load_state_dict(torch.load('./resnet_' + str(args.experiment) + '_model.pt'))
         model = model.to(args.device)
         test_subset = create_subset(args,testset)
         test_loader =  torch.utils.data.DataLoader(test_subset, batch_size=1, shuffle=False, num_workers=1)
-
         print("The length of the subset for explaining is : ",len(test_subset))
 
         image_tensor: torch.Tensor
         i = 1
 
         for image_tensor, label in tqdm(test_loader):
-            print(i)
             image_tensor = image_tensor.to(args.device)
             label = label.to(args.device)
 
-            saliency_map_lime = metrics.perform('lime', deepcopy(image_tensor), model, label.item(), 'lime_results.csv')
-            saliency_map_smooth_integrated = metrics.perform('smooth_integrated', deepcopy(image_tensor), model, label.item(), 'smooth_integrated_results.csv')
-            saliency_map_rise_integrated = metrics.perform('rise_integrated', deepcopy(image_tensor), model, label.item(), 'rise_integrated_results.csv')
+            for method in methods: 
+                saliency_map, images, indexes, avg_auc = metrics.perform(
+                    method, deepcopy(image_tensor), model, label.item(), 
+                    images_dict[method], indexes_dict[method], avg_auc_dict[method])
+                
+                images_dict[method] = images
+                indexes_dict[method] = indexes
+                avg_auc_dict[method] = avg_auc
 
             if i % 10 == 0:
                 print(f"Saving saliency map for step {i}")
-                img = Image.fromarray(saliency_map_lime)
+                img = Image.fromarray(saliency_map)
                 img = img.resize((224,224),resample=Image.LANCZOS)
-                img.save('lime' + str(i) + '.png')
-
-                img2 = Image.fromarray(saliency_map_smooth_integrated)
-                img2 = img.resize((224,224),resample=Image.LANCZOS)
-                img2.save('smooth_grad' + str(i) + '.png')
-
-                img3 = Image.fromarray(saliency_map_rise_integrated)
-                img3 = img3.resize((224,224),resample=Image.LANCZOS)
-                img3.save('rise_grad' + str(i) + '.png')
+                img.save(method + str(i) + '.png')
             i += 1
+
+        colors = ['blue', 'orange', 'green', 'purple', 'red', 'brown', 'pink', 'gray', 'olive', 'cyan']
+        markers = ['o', 'v', '^', '<', '>', 's', 'P', '*', 'X', 'D']
+
+        for method in methods:
+            avg_auc_dict[method] /= len(test_loader)
+            print(method, 'avg_auc', avg_auc_dict[method])
+
+            pca = PCA(n_components=2)
+            pca_images = pca.fit_transform(images_dict[method])   
+
+            for label in indexes_dict[method]['orig'].keys():
+                
+                plt.scatter(pca_images[indexes_dict[method]['orig'][label]][:,0], 
+                            pca_images[indexes_dict[method]['orig'][label]][:,1],
+                            c=colors[label], marker=markers[label], s=70,  label=f'orig {label}')
+                
+                plt.scatter(pca_images[indexes_dict[method]['pert'][label]][:,0], 
+                            pca_images[indexes_dict[method]['pert'][label]][:,1],
+                            c=colors[label], marker=markers[label], alpha=0.1, s=20, label=f'pert {label}')
+
+            ax = plt.gca()
+            ax.xaxis.set_visible(False)
+            ax.yaxis.set_visible(False)
+            plt.title(f'PCA for {method}')
+            plt.legend(bbox_to_anchor=(1.0, 1.0))
+            plt.savefig(f'{method}_distr.png', facecolor='w', bbox_inches='tight')
+            plt.close()
 
 
 if __name__ == '__main__':
