@@ -7,7 +7,7 @@ import rise_grad
 import lime
 
 
-def perform(grad_fn, image_tensor, model, target, images, indexes, avg_auc) -> None:
+def perform(grad_fn, image_tensor, model, target, images, indexes, avg_auc):
 
     if grad_fn == 'vanilla':
         norm_array_2d, predictions = vanilla_grad.get_vanilla_grad(
@@ -74,4 +74,4 @@ def perform(grad_fn, image_tensor, model, target, images, indexes, avg_auc) -> N
 
     avg_auc += evaluation.area_under_curve(deletion_scores)
 
-    return images, indexes, avg_auc
+    return norm_array_2d, images, indexes, avg_auc

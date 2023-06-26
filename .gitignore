@@ -1,6 +1,11 @@
 # Custom
 *.out
 /data
+/brain-tumor-classification
+/chest_xray
+resnet_pneumonia_model.pt
+resnet_stl_model.pt
+resnet_tumor_model.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
