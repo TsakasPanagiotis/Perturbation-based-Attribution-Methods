@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 
 def main(args):
 
-    torch.manual_seed(7)
-    torch.cuda.manual_seed(7)
+    torch.manual_seed(17)
+    torch.cuda.manual_seed(17)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -92,7 +92,7 @@ def main(args):
         model.load_state_dict(torch.load('./resnet_' + str(args.experiment) + '_model.pt'))
         model = model.to(args.device)
         test_subset = create_subset(args,testset)
-        test_loader =  torch.utils.data.DataLoader(test_subset, batch_size=1, shuffle=False, num_workers=1)
+        test_loader =  torch.utils.data.DataLoader(test_subset, batch_size=1, shuffle=False, num_workers=2)
         print("The length of the subset for explaining is : ",len(test_subset))
 
         image_tensor: torch.Tensor
@@ -101,6 +101,15 @@ def main(args):
         for image_tensor, label in tqdm(test_loader):
             image_tensor = image_tensor.to(args.device)
             label = label.to(args.device)
+
+            if label.item() == 0:
+                str_label = 'airplane'
+            elif label.item() == 1:
+                str_label = 'bird'
+            elif label.item() == 2:
+                str_label = 'car'
+            elif label.item() == 3:
+                str_label = 'cat'
 
             for method in methods: 
                 saliency_map, images, indexes, avg_auc = metrics.perform(
@@ -111,11 +120,11 @@ def main(args):
                 indexes_dict[method] = indexes
                 avg_auc_dict[method] = avg_auc
 
-            if i % 10 == 0:
-                print(f"Saving saliency map for step {i}")
-                img = Image.fromarray(saliency_map)
-                img = img.resize((224,224),resample=Image.LANCZOS)
-                img.save(method + str(i) + '.png')
+                if i % 10 == 0:
+                    print(f"Saving saliency map for step {i} for label : {str_label}")
+                    img = Image.fromarray(saliency_map)
+                    img = img.resize((224,224),resample=Image.LANCZOS)
+                    img.save(method + str(i) + '.png')
             i += 1
 
         colors = ['blue', 'orange', 'green', 'purple', 'red', 'brown', 'pink', 'gray', 'olive', 'cyan']
@@ -136,7 +145,7 @@ def main(args):
                 
                 plt.scatter(pca_images[indexes_dict[method]['pert'][label]][:,0], 
                             pca_images[indexes_dict[method]['pert'][label]][:,1],
-                            c=colors[label], marker=markers[label], alpha=0.1, s=20, label=f'pert {label}')
+                            c=colors[label], marker=markers[label], alpha=0.1, s=30, label=f'pert {label}')
 
             ax = plt.gca()
             ax.xaxis.set_visible(False)
