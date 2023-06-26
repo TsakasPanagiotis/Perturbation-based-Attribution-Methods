@@ -102,14 +102,27 @@ def main(args):
             image_tensor = image_tensor.to(args.device)
             label = label.to(args.device)
 
-            if label.item() == 0:
-                str_label = 'airplane'
-            elif label.item() == 1:
-                str_label = 'bird'
-            elif label.item() == 2:
-                str_label = 'car'
-            elif label.item() == 3:
-                str_label = 'cat'
+            if args.experiment == 'stl':
+                if label.item() == 0:
+                    str_label = 'airplane'
+                elif label.item() == 1:
+                    str_label = 'bird'
+                elif label.item() == 2:
+                    str_label = 'car'
+                elif label.item() == 3:
+                    str_label = 'cat'
+            elif args.experiment == 'tumor':
+                if label.item() == 0:
+                    str_label = 'tumoer'
+                elif label.item() == 1:
+                    str_label = 'normal'
+            elif args.experiment == 'pneumonia':
+                if label.item() == 0:
+                    str_label = 'normal'
+                elif label.item() == 1:
+                    str_label = 'pneumonia'
+            else:
+                raise ValueError('Invalid experiment')
 
             for method in methods: 
                 saliency_map, images, indexes, avg_auc = metrics.perform(
