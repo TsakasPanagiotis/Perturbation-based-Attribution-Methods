@@ -70,7 +70,7 @@ def perform(grad_fn, image_tensor, model, target, images, indexes, avg_auc):
         model, norm_array_2d, image_tensor, target,
         num_stages=100, batch_size=10, show_stages=False)
     
-    evaluation.visualize_scores(deletion_scores, is_insert=False)
+    # evaluation.visualize_scores(deletion_scores, is_insert=False)
 
     avg_auc += evaluation.area_under_curve(deletion_scores)
 

@@ -66,6 +66,8 @@ for image_tensor, label in test_loader:
             img = Image.fromarray(saliency_map)
             img = img.resize((224,224), resample=Image.LANCZOS)
             img.save(f'{method}_{i}.png')
+            original_image = torchvision.transforms.ToPILImage()(image_tensor[0])
+            original_image.save('original_image' + str(i) + '.png')
 
     i += 1
     counter += 1

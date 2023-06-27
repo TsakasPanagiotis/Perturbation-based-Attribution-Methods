@@ -92,8 +92,26 @@ def main(args):
         model.load_state_dict(torch.load('./resnet_' + str(args.experiment) + '_model.pt'))
         model = model.to(args.device)
         test_subset = create_subset(args,testset)
-        test_loader =  torch.utils.data.DataLoader(test_subset, batch_size=1, shuffle=False, num_workers=2)
-        print("The length of the subset for explaining is : ",len(test_subset))
+        test_loader = torch.utils.data.DataLoader(test_subset, batch_size=1, shuffle=False, num_workers=2)
+        print("The length of the subset for explaining is : ", len(test_subset))
+
+        str_label_dict = {
+            'stl': {
+                0: 'airplane',
+                1: 'bird',
+                2: 'car',
+                3: 'cat'
+            },
+            'tumor': {
+                0: 'tumor',
+                1: 'normal'
+            },
+            'pneumonia': {
+                0: 'normal',
+                1: 'pneumonia'
+            }
+        }
+        assert args.experiment in str_label_dict.keys(), 'Invalid experiment'
 
         image_tensor: torch.Tensor
         i = 1
@@ -102,27 +120,7 @@ def main(args):
             image_tensor = image_tensor.to(args.device)
             label = label.to(args.device)
 
-            if args.experiment == 'stl':
-                if label.item() == 0:
-                    str_label = 'airplane'
-                elif label.item() == 1:
-                    str_label = 'bird'
-                elif label.item() == 2:
-                    str_label = 'car'
-                elif label.item() == 3:
-                    str_label = 'cat'
-            elif args.experiment == 'tumor':
-                if label.item() == 0:
-                    str_label = 'tumor'
-                elif label.item() == 1:
-                    str_label = 'normal'
-            elif args.experiment == 'pneumonia':
-                if label.item() == 0:
-                    str_label = 'normal'
-                elif label.item() == 1:
-                    str_label = 'pneumonia'
-            else:
-                raise ValueError('Invalid experiment')
+            str_label = str_label_dict[args.experiment][label.item()]
 
             for method in methods: 
                 saliency_map, images, indexes, avg_auc = metrics.perform(
@@ -135,11 +133,18 @@ def main(args):
 
                 if i % 10 == 0:
                     print(f"Saving saliency map for step {i} for label : {str_label}")
-                    original_image = torchvision.transforms.ToPILImage()(image_tensor)
+
+                    inverse_transform = torchvision.transforms.Compose([
+                        torchvision.transforms.Normalize([ 0., 0., 0. ], [ 1/0.229, 1/0.224, 1/0.225 ]),
+                        torchvision.transforms.Normalize([ -0.485, -0.456, -0.406 ], [ 1., 1., 1. ]),
+                        torchvision.transforms.ToPILImage()
+                    ])
+                    original_image = inverse_transform(image_tensor[0])
+                    original_image.save(f'results/{args.experiment}/original_image_{i}.png')                    
+                    
                     img = Image.fromarray(saliency_map)
-                    img = img.resize((224,224),resample=Image.LANCZOS)
-                    original_image.save('original_image' + str(i) + '.png')
-                    img.save(method + str(i) + '.png')
+                    # img = img.resize((224,224),resample=Image.LANCZOS)
+                    img.save(f'results/{args.experiment}/{method}_map_{i}.png')
             i += 1
 
         colors = ['blue', 'orange', 'green', 'purple', 'red', 'brown', 'pink', 'gray', 'olive', 'cyan']
@@ -154,20 +159,20 @@ def main(args):
 
             for label in indexes_dict[method]['orig'].keys():
                 
-                #plt.scatter(pca_images[indexes_dict[method]['orig'][label]][:,0], 
-                #            pca_images[indexes_dict[method]['orig'][label]][:,1],
-                #            c=colors[label], marker=markers[label], s=70,  label=f'orig {label}')
+                plt.scatter(pca_images[indexes_dict[method]['orig'][label]][:,0], 
+                           pca_images[indexes_dict[method]['orig'][label]][:,1],
+                           c=colors[label], marker=markers[label], s=70,  label=f'orig {str_label}')
                 
                 plt.scatter(pca_images[indexes_dict[method]['pert'][label]][:,0], 
                             pca_images[indexes_dict[method]['pert'][label]][:,1],
-                            c=colors[label], marker=markers[label], alpha=0.1, s=30, label=f'pert {label}')
+                            c=colors[label], marker=markers[label], alpha=0.1, s=30, label=f'pert {str_label}')
 
             ax = plt.gca()
             ax.xaxis.set_visible(False)
             ax.yaxis.set_visible(False)
             plt.title(f'PCA for {method}')
             plt.legend(bbox_to_anchor=(1.0, 1.0))
-            plt.savefig(f'{method}_distr.png', facecolor='w', bbox_inches='tight')
+            plt.savefig(f'results/{args.experiment}/{method}_pca.png', facecolor='w', bbox_inches='tight')
             plt.close()
 
 

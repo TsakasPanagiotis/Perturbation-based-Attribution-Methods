@@ -7,6 +7,7 @@
 resnet_pneumonia_model.pt
 resnet_stl_model.pt
 resnet_tumor_model.pt
+/results
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
