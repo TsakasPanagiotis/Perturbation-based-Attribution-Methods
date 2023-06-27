@@ -135,8 +135,10 @@ def main(args):
 
                 if i % 10 == 0:
                     print(f"Saving saliency map for step {i} for label : {str_label}")
+                    original_image = torchvision.transforms.ToPILImage()(image_tensor)
                     img = Image.fromarray(saliency_map)
                     img = img.resize((224,224),resample=Image.LANCZOS)
+                    original_image.save('original_image' + str(i) + '.png')
                     img.save(method + str(i) + '.png')
             i += 1
 
@@ -152,9 +154,9 @@ def main(args):
 
             for label in indexes_dict[method]['orig'].keys():
                 
-                plt.scatter(pca_images[indexes_dict[method]['orig'][label]][:,0], 
-                            pca_images[indexes_dict[method]['orig'][label]][:,1],
-                            c=colors[label], marker=markers[label], s=70,  label=f'orig {label}')
+                #plt.scatter(pca_images[indexes_dict[method]['orig'][label]][:,0], 
+                #            pca_images[indexes_dict[method]['orig'][label]][:,1],
+                #            c=colors[label], marker=markers[label], s=70,  label=f'orig {label}')
                 
                 plt.scatter(pca_images[indexes_dict[method]['pert'][label]][:,0], 
                             pca_images[indexes_dict[method]['pert'][label]][:,1],
