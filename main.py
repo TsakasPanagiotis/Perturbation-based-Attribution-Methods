@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 
 def main(args):
 
-    torch.manual_seed(17)
-    torch.cuda.manual_seed(17)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
@@ -140,11 +140,12 @@ def main(args):
                         torchvision.transforms.ToPILImage()
                     ])
                     original_image = inverse_transform(image_tensor[0])
-                    original_image.save(f'results/{args.experiment}/original_image_{i}.png')                    
+                    # original_image = original_image.resize((224,224), resample=Image.LANCZOS)
+                    original_image.save(f'results_{args.seed}/{args.experiment}/original_image_{i}.png')                    
                     
                     img = Image.fromarray(saliency_map)
-                    # img = img.resize((224,224),resample=Image.LANCZOS)
-                    img.save(f'results/{args.experiment}/{method}_map_{i}.png')
+                    img = img.resize((224,224), resample=Image.LANCZOS)
+                    img.save(f'results_{args.seed}/{args.experiment}/{method}_map_{i}.png')
             i += 1
 
         colors = ['blue', 'orange', 'green', 'purple', 'red', 'brown', 'pink', 'gray', 'olive', 'cyan']
@@ -172,7 +173,7 @@ def main(args):
             ax.yaxis.set_visible(False)
             plt.title(f'PCA for {method}')
             plt.legend(bbox_to_anchor=(1.0, 1.0))
-            plt.savefig(f'results/{args.experiment}/{method}_pca.png', facecolor='w', bbox_inches='tight')
+            plt.savefig(f'results_{args.seed}/{args.experiment}/{method}_pca.png', facecolor='w', bbox_inches='tight')
             plt.close()
 
 
@@ -191,5 +192,6 @@ if __name__ == '__main__':
                         help='Learning rate for training.')
     parser.add_argument('--device', default='cuda', type=str,
                         help='Choose "cpu" or "cuda"')
+    parser.add_argument('--seed', type=int)
     args = parser.parse_args()
     main(args)
