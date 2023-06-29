@@ -7,7 +7,7 @@ def preprocess_stl(dataset, classes_to_remove):
     indices_to_keep = [i for i, label in enumerate(labels) if label not in classes_to_remove]
     dataset_subset = Subset(dataset, indices_to_keep)
     labels_subset = [label for i, label in enumerate(labels) if i in indices_to_keep]
-    train_indices, test_indices = train_test_split(range(len(labels_subset)), test_size=0.1, stratify=labels_subset)
+    train_indices, test_indices = train_test_split(range(len(labels_subset)), test_size=0.1, stratify=labels_subset, random_state=0)
     train_subset = Subset(dataset_subset, train_indices)
     test_subset = Subset(dataset_subset, test_indices)
     
