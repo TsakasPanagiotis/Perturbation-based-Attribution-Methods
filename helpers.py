@@ -32,44 +32,6 @@ def vanilla_gradients(input_array: torch.Tensor, model, target):
     return grads, softmax_preds_2d
 
 
-# def get_info(name):
-#     '''
-#     Get image path and index of given class.
-
-#     Parameters
-#         name: str
-    
-#     Returns
-#         img_path: str
-#         class_index: int
-#     '''
-#     img_folder = 'images/'
-
-#     if name in ['elephant', 'tusker']:
-#         return img_folder + 'elephant.jpg', 101
-    
-#     elif name in ['cat', 'egyptian cat', 'egyptian_cat']:
-#         return img_folder + 'cat.jpg', 285
-
-#     elif name in ['ostrich']:
-#         return img_folder + 'ostrich.jpg', 9
-    
-#     elif name in ['fox', 'red fox', 'red_fox']:
-#         return img_folder + 'red_fox.jpg', 277
-    
-#     elif name in ['goldfish']:
-#         return img_folder + 'goldfish.jpg', 1
-
-#     elif name in ['lizard', 'green lizard', 'green_lizard']:
-#         return img_folder + 'green_lizard.jpg', 40
-    
-#     elif name in ['gazelle']:
-#         return img_folder + 'gazelle.jpg', 353
-    
-#     elif name in ['dog', 'terrier', 'norwich terrier', 'norwich_terrier']:
-#         return img_folder + 'terrier.jpg', 186
-
-
 def visualize_sensitivity_map(norm_array_2d, in_notebook):
 
     if in_notebook:
@@ -77,20 +39,3 @@ def visualize_sensitivity_map(norm_array_2d, in_notebook):
     else:
         img = im.fromarray(norm_array_2d)
         img.save('saliency.png')
-
-
-# def visualize_image(image_tensor, target_size, in_notebook):
-#     '''
-#     Visualize image given by name at given size.
-
-#     Parameters
-#         image_tensor: tensor of shape (batch_size=1, image_height, image_width, channels=3)
-#         target_size: tuple of (int, int)
-#         in_notebook: boolean that shows image in notebook or opens Photos
-#     '''
-#     # img_path, _ = get_info(name)
-#     arr_3d = load_image_to_3d_array(image_tensor, target_size)
-#     if in_notebook:
-#         return image.array_to_img(arr_3d)
-#     else:
-#         image.array_to_img(arr_3d).show()
